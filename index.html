@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Las cintas de opciones</title>
+<style>
+/* ==========================================================
+   Paleta tomada de los gráficos vectoriales del archivo SWF:
+   azul petróleo #00758d, rojo #d9272e / #ff5756, grises #393938,
+   #5a5c5b y #717070, naranja #ff9c36 y fondo con viñeta clara.
+   ========================================================== */
+:root{
+  --teal:#00758d; --teal-dark:#005a6d; --red:#d9272e; --coral:#ff5756;
+  --ink:#393938; --slate:#5a5c5b; --grey:#717070; --line:#c9cecb;
+  --ok:#17692f; --ok-bg:#e8f5ec; --bad-bg:#fdeceb; --orange:#ff9c36;
+  --paper:#ffffff;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:16px}
+body{
+  margin:0; color:var(--ink);
+  font:16px/1.45 Arial,"Helvetica Neue",Helvetica,sans-serif;
+  background:radial-gradient(ellipse at 50% 40%,#f4f9f6 0%,#eaefec 55%,#cfd4d0 100%) fixed;
+  min-height:100vh;
+}
+
+/* ---------- Encabezado (barra azul con corte rojo, como en el original) ---------- */
+.top{
+  position:relative; background:var(--teal); color:#fff; overflow:hidden;
+  padding:0 24px; min-height:68px; display:flex; align-items:center;
+}
+.top::before{ /* corte rojo inclinado */
+  content:""; position:absolute; top:0; bottom:0; right:0; width:30%;
+  background:var(--red); clip-path:polygon(14% 0,100% 0,100% 100%,0 100%);
+}
+.top::after{ /* franja gris bajo el corte */
+  content:""; position:absolute; bottom:0; right:0; width:28%; height:5px; background:var(--slate);
+}
+.top h1{
+  position:relative; z-index:1; margin:0; font-weight:700; letter-spacing:.01em;
+  font-family:"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif;
+  font-stretch:condensed; font-size:clamp(1.6rem,4vw,2.2rem);
+}
+
+/* ---------- Distribución ---------- */
+.layout{
+  max-width:1200px; margin:0 auto; padding:20px 20px 130px;
+  display:grid; grid-template-columns:320px minmax(0,1fr); gap:24px; align-items:start;
+}
+.side{position:sticky; top:16px; display:flex; flex-direction:column; gap:16px}
+.main{display:flex; flex-direction:column; gap:22px}
+@media (max-width:880px){
+  .layout{grid-template-columns:1fr; padding:14px 12px 140px}
+  .side{position:static}
+}
+
+.card{background:var(--paper); border:1px solid var(--line); border-radius:4px; overflow:hidden}
+.card .body{padding:14px 16px 16px}
+.bh{margin:0}
+.bh svg{display:block; width:100%; height:auto}
+
+/* ---------- Datos del alumno ---------- */
+.field{display:flex; flex-direction:column; gap:4px; margin-bottom:12px}
+.field:last-child{margin-bottom:0}
+.field label{font-weight:700; color:var(--slate)}
+.field input{
+  font:inherit; color:var(--ink); background:#fff; width:100%;
+  border:2px solid var(--slate); border-radius:4px; padding:9px 10px; min-height:44px;
+}
+.printval{display:none; font-weight:700; border-bottom:1px solid var(--ink); padding:2px 4px; min-height:1.5em}
+
+.steps{margin:0; padding-left:1.3em}
+.steps li{margin-bottom:.7em}
+.steps li:last-child{margin-bottom:0}
+.card p{margin:0}
+
+/* ---------- Partes de la actividad ---------- */
+.part{background:rgba(255,255,255,.92); border:1px solid var(--line); border-radius:4px; padding:16px}
+.part>h2{
+  margin:0 0 14px; padding:0 0 8px; border-bottom:4px solid var(--teal);
+  font:700 1.35rem/1.2 "Arial Narrow","Roboto Condensed",Arial,sans-serif; font-stretch:condensed; color:var(--teal-dark);
+}
+.qgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px}
+
+fieldset.q{
+  margin:0; padding:10px 12px 12px; background:#fff; min-width:0;
+  border:1px solid var(--line); border-left:6px solid var(--teal); border-radius:4px;
+  break-inside:avoid;
+}
+fieldset.q legend{padding:0 6px; font-weight:700; font-size:1.05rem}
+.opts{display:grid; gap:2px}
+label.opt{
+  display:flex; align-items:center; gap:10px; padding:7px 8px; border-radius:4px; cursor:pointer; min-height:40px;
+}
+label.opt:hover{background:#eef4f5}
+label.opt input{width:20px; height:20px; accent-color:var(--teal); flex:none; margin:0}
+.mark{display:none}
+
+.fb{margin-top:8px; padding:6px 8px; border-radius:4px; font-weight:700; font-size:.95rem}
+.fb[hidden]{display:none}
+.q.ok{border-left-color:var(--ok)} .q.ok .fb{background:var(--ok-bg); color:var(--ok)}
+.q.bad{border-left-color:var(--red)} .q.bad .fb{background:var(--bad-bg); color:#a3151b}
+.q.missing,.it.missing{outline:3px solid var(--orange); outline-offset:2px}
+.q.missing .fb,.it.missing .fb{background:#fff3e3; color:#8a4b00}
+
+/* Parte 2: relacionar con letras */
+.p2{display:grid; grid-template-columns:minmax(220px,300px) minmax(0,1fr); gap:18px; align-items:start}
+@media (max-width:760px){.p2{grid-template-columns:1fr}}
+.legend{margin:0; padding:12px 14px; background:#fff; border:1px solid var(--line); border-left:6px solid var(--red); border-radius:4px}
+.legend h3{margin:0 0 8px; font-size:1rem; color:var(--slate)}
+.legend ul{list-style:none; margin:0; padding:0; display:grid; gap:8px}
+.legend b{display:inline-grid; place-items:center; width:1.6em; height:1.6em; margin-right:6px; background:var(--teal); color:#fff; border-radius:50%}
+.items{display:grid; gap:10px}
+.it{display:grid; grid-template-columns:auto 1fr; column-gap:12px; row-gap:4px; align-items:center; padding:8px 10px; background:#fff; border:1px solid var(--line); border-left:6px solid var(--teal); border-radius:4px; break-inside:avoid}
+.it.ok{border-left-color:var(--ok)} .it.bad{border-left-color:var(--red)}
+.it input.letter{
+  width:52px; height:46px; text-align:center; font:700 1.4rem Arial,sans-serif; color:var(--ink);
+  border:2px solid var(--slate); border-radius:4px; background:#fff; text-transform:lowercase;
+}
+.it .printval{width:52px; text-align:center}
+.it label{font-weight:700}
+.it .fb{grid-column:1 / -1; margin-top:2px}
+.it.ok .fb{background:var(--ok-bg); color:var(--ok)} .it.bad .fb{background:var(--bad-bg); color:#a3151b}
+
+/* ---------- Resultados ---------- */
+.results{border-left:8px solid var(--teal); padding:16px 18px}
+.results[hidden]{display:none}
+.results h2{margin:0 0 8px; font-size:1.2rem; color:var(--teal-dark)}
+.score{font:700 3rem/1 Arial,sans-serif; color:var(--teal-dark)}
+.score small{font-size:1.2rem; color:var(--slate)}
+.stats{display:flex; flex-wrap:wrap; gap:8px 22px; margin:10px 0 0; padding:0; list-style:none; font-weight:700}
+.stats span{font-weight:400}
+
+/* ---------- Botones y mensajes (parte inferior derecha) ---------- */
+.bar{position:fixed; right:16px; bottom:16px; display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px; z-index:20; max-width:calc(100vw - 32px)}
+.btn{
+  font:700 1rem Arial,sans-serif; min-height:48px; padding:10px 20px; border-radius:4px; cursor:pointer;
+  border:2px solid var(--teal); background:var(--teal); color:#fff; box-shadow:0 2px 6px rgba(0,0,0,.25);
+}
+.btn:hover{background:var(--teal-dark); border-color:var(--teal-dark)}
+.btn.alt{background:#fff; color:var(--teal-dark)}
+.btn.alt:hover{background:#e9f3f5}
+.btn.retry{background:#fff; color:#a3151b; border-color:var(--red)}
+.btn.retry:hover{background:var(--bad-bg)}
+.btn[aria-disabled="true"]{background:var(--grey); border-color:var(--grey); cursor:not-allowed}
+.btn[hidden]{display:none}
+:focus-visible{outline:3px solid var(--orange); outline-offset:2px}
+
+.toast{
+  position:fixed; right:16px; bottom:80px; z-index:21; width:min(440px,calc(100vw - 32px));
+  background:#fff; border:1px solid var(--line); border-left:8px solid var(--red); border-radius:4px;
+  padding:12px 14px; box-shadow:0 4px 14px rgba(0,0,0,.3);
+}
+.toast[hidden]{display:none}
+.toast p{margin:0 0 8px; font-weight:700}
+.toast ul{margin:0 0 8px; padding-left:1.2em}
+.toast button{font:inherit; font-weight:700; color:var(--teal-dark); background:none; border:2px solid var(--teal); border-radius:4px; padding:4px 12px; cursor:pointer}
+
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important; transition:none!important; animation:none!important}}
+
+/* ---------- Impresión / Guardar como PDF ---------- */
+@page{size:letter; margin:12mm}
+@media print{
+  *{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  body{background:#fff; font-size:11pt}
+  .bar,.toast,.noprint{display:none!important}
+  .top{min-height:54px}
+  .layout{display:block; padding:0; max-width:none}
+  .side{position:static; display:block}
+  .side .card,.part,.results{margin-bottom:10px}
+  .side .card{width:100mm}
+  .card,.part{break-inside:auto}
+  .card,.results,fieldset.q,.it,.legend{break-inside:avoid; page-break-inside:avoid}
+  .part{border:none; padding:0; background:#fff}
+  .field input,.it input.letter{display:none!important}
+  .printval{display:block}
+  .it .printval{display:inline-block}
+  label.opt input{display:none}
+  .mark{display:inline-block; width:1.2em; font-size:1.1em}
+  .mark::before{content:"\25CB"}
+  .mark.on::before{content:"\25C9"; font-weight:700}
+  label.opt{padding:2px 4px; min-height:0}
+  .qgrid{grid-template-columns:repeat(2,1fr); gap:8px}
+}
+</style>
+</head>
+<body>
+
+<header class="top"><h1>Las cintas de opciones</h1></header>
+
+<div class="layout">
+  <aside class="side">
+    <section class="card" aria-label="Datos del alumno">
+      <h2 class="bh"><svg xmlns="http://www.w3.org/2000/svg" viewBox="26.8 81.1 168.35 26.35" role="img" aria-label="Datos del alumno"><path d="M195.15 107.45L26.8 107.45L26.8 81.1L195.15 81.1L195.15 107.45Z" fill="#00758d" fill-rule="evenodd"/><path d="M64.4 98.05Q64.4 99.2 63.6 99.95Q62.85 100.75 61.7 100.75L58.55 100.75L58.55 85.55L61.7 85.55Q62.85 85.55 63.6 86.3Q64.4 87.05 64.4 88.2L64.4 98.05Z M59.5 86.5L59.5 99.8L61.7 99.8Q62.4 99.8 62.95 99.3Q63.45 98.75 63.45 98.05L63.45 88.2Q63.45 87.45 62.95 87Q62.45 86.5 61.7 86.5L59.5 86.5Z" fill="#ffffff" fill-rule="evenodd"/><path d="M69.15 89.95Q70.2 89.95 70.95 90.65Q71.65 91.35 71.65 92.45L71.65 100.75L70.7 100.75L70.7 99.6Q69 100.95 68 100.95Q67.25 100.95 66.75 100.45Q66.2 99.9 66.2 99.15L66.2 97.8Q66.2 95.85 68.05 95.05L70.7 94.25L70.7 92.45Q70.7 90.9 69.15 90.9Q68.4 90.9 68 91.35Q67.55 91.75 67.55 92.45L67.55 92.85L66.6 92.85L66.6 92.45Q66.6 91.35 67.35 90.65Q68.1 89.95 69.15 89.95Z M70.7 95.2L68.45 95.9Q67.15 96.45 67.15 97.8L67.15 99.15Q67.15 99.45 67.45 99.75L68 100Q69 100 70.7 98.45L70.7 95.2Z" fill="#ffffff" fill-rule="evenodd"/><path d="M77.35 91.05L75.35 91.05L75.35 99.15L75.75 99.7L76.6 100L76.6 100.95Q75.8 100.95 75.15 100.45Q74.4 99.85 74.4 99.15L74.4 91.05L72.9 91.05L72.9 90.1L74.4 90.1L74.4 87.35L75.35 87.35L75.35 90.1L77.35 90.1L77.35 91.05Z" fill="#ffffff" fill-rule="evenodd"/><path d="M83.95 98.45Q83.95 99.45 83.25 100.2Q82.5 100.95 81.45 100.95L81 100.95Q79.95 100.95 79.25 100.2Q78.5 99.45 78.5 98.45L78.5 92.45Q78.5 91.4 79.25 90.7Q79.95 89.95 81 89.95L81.45 89.95Q82.5 89.95 83.25 90.7Q83.95 91.4 83.95 92.45L83.95 98.45Z M83 92.45Q83 91.8 82.55 91.35Q82.1 90.9 81.45 90.9L81 90.9Q80.35 90.9 79.9 91.35Q79.45 91.8 79.45 92.45L79.45 98.45Q79.45 99.1 79.9 99.55Q80.35 100 81 100L81.45 100Q82.1 100 82.55 99.55Q83 99.1 83 98.45L83 92.45Z" fill="#ffffff" fill-rule="evenodd"/><path d="M86.8 92.85Q86.8 93.7 88.95 94.95L90.15 95.8Q91.3 96.85 91.3 97.8L91.3 98.45Q91.3 99.45 90.55 100.2Q89.8 100.95 88.75 100.95L88.35 100.95Q87.3 100.95 86.6 100.2Q85.85 99.45 85.85 98.45L85.85 96.75L86.8 96.75L86.8 98.45Q86.8 99.1 87.25 99.55Q87.7 100 88.35 100L88.75 100L89.9 99.55Q90.35 99.1 90.35 98.45L90.35 97.8Q90.35 97.25 89.25 96.35L88.1 95.6Q85.85 94.35 85.85 92.85L85.85 92.45Q85.85 91.4 86.6 90.7Q87.3 89.95 88.35 89.95L88.75 89.95Q89.8 89.95 90.55 90.7Q91.3 91.4 91.3 92.45L91.3 92.85L90.35 92.85L90.35 92.45Q90.35 91.8 89.9 91.35Q89.4 90.9 88.75 90.9L88.35 90.9Q87.7 90.9 87.25 91.35Q86.8 91.8 86.8 92.45L86.8 92.85Z" fill="#ffffff" fill-rule="evenodd"/><path d="M99.4 89.9Q100.25 89.9 101 90.45L101 86.25L101.95 86.25L101.95 100.75L101 100.75L101 99.6Q99.3 100.95 98.3 100.95Q97.55 100.95 97.05 100.45Q96.5 99.9 96.5 99.15L96.5 92.45Q96.5 91.4 97.25 90.65Q97.95 89.9 99 89.9L99.4 89.9Z M97.45 92.45L97.45 99.15Q97.45 100 98.3 100Q99.3 100 101 98.45L101 92.35Q101 91.75 100.5 91.3Q100.05 90.85 99.4 90.85L99 90.85Q98.35 90.85 97.9 91.3Q97.45 91.8 97.45 92.45Z" fill="#ffffff" fill-rule="evenodd"/><path d="M109.65 92.45L109.65 94.9L105.15 94.9L105.15 98.45Q105.15 99.1 105.6 99.55Q106.1 100 106.75 100L107.15 100L108.25 99.55Q108.7 99.1 108.7 98.45L108.7 97.05L109.65 97.05L109.65 98.45Q109.65 99.5 108.95 100.25Q108.2 100.95 107.15 100.95L106.75 100.95Q105.7 100.95 104.95 100.25Q104.2 99.5 104.2 98.45L104.2 92.45Q104.2 91.4 104.95 90.7Q105.7 89.95 106.75 89.95L107.15 89.95Q108.2 89.95 108.95 90.7Q109.65 91.4 109.65 92.45Z M107.15 90.9L106.75 90.9Q106.1 90.9 105.6 91.35Q105.15 91.8 105.15 92.45L105.15 94L108.7 94L108.7 92.45Q108.7 91.8 108.25 91.35Q107.8 90.9 107.15 90.9Z" fill="#ffffff" fill-rule="evenodd"/><path d="M111.75 86.25L112.7 86.25L112.7 99.15L113.1 99.7L113.95 100L113.95 100.95Q113.15 100.95 112.5 100.45Q111.75 99.85 111.75 99.15L111.75 86.25Z" fill="#ffffff" fill-rule="evenodd"/><path d="M119.35 90.65Q120.05 89.95 121.1 89.95Q122.15 89.95 122.9 90.65Q123.65 91.35 123.65 92.45L123.65 100.75L122.7 100.75L122.7 99.6Q121 100.95 120 100.95Q119.25 100.95 118.75 100.45Q118.2 99.9 118.2 99.15L118.2 97.8Q118.2 95.85 120.05 95.05L122.7 94.25L122.7 92.45Q122.7 90.9 121.1 90.9Q120.4 90.9 119.95 91.35Q119.55 91.75 119.55 92.45L119.55 92.85L118.6 92.85L118.6 92.45Q118.6 91.35 119.35 90.65Z M119.15 97.8L119.15 99.15L119.4 99.75L120 100Q121 100 122.7 98.45L122.7 95.2L120.45 95.9Q119.15 96.4 119.15 97.8Z" fill="#ffffff" fill-rule="evenodd"/><path d="M126.1 86.25L127.05 86.25L127.05 99.15L127.45 99.7Q127.9 100 128.3 100L128.3 100.95Q127.5 100.95 126.85 100.45Q126.1 99.85 126.1 99.15L126.1 86.25Z" fill="#ffffff" fill-rule="evenodd"/><path d="M135.25 90.1L135.25 100.75L134.3 100.75L134.3 99.6Q132.65 100.95 131.6 100.95Q130.85 100.95 130.35 100.45Q129.8 99.9 129.8 99.15L129.8 90.1L130.75 90.1L130.75 99.15Q130.75 99.5 131.05 99.75L131.6 100Q132.65 100 134.3 98.45L134.3 90.1L135.25 90.1Z" fill="#ffffff" fill-rule="evenodd"/><path d="M139.8 91.7L138.65 92.45L138.65 100.75L137.7 100.75L137.7 90.1L138.65 90.1L138.65 91.3L139.8 90.65Q141.1 89.95 141.75 89.95Q143.15 89.95 143.5 91.3L143.55 91.3L144.7 90.65Q146 89.95 146.6 89.95Q147.35 89.95 147.9 90.5Q148.45 91 148.45 91.75L148.45 100.75L147.5 100.75L147.5 91.75L147.2 91.15L146.6 90.9Q146 90.9 144.7 91.7L143.55 92.45L143.55 100.75L142.6 100.75L142.6 91.75L142.35 91.15Q142.05 90.9 141.75 90.9Q141.1 90.9 139.8 91.7Z" fill="#ffffff" fill-rule="evenodd"/><path d="M151.75 91.3L152.7 90.65Q153.8 89.95 154.4 89.95Q155.15 89.95 155.7 90.5Q156.25 91 156.25 91.75L156.25 100.75L155.3 100.75L155.3 91.75L155 91.15L154.4 90.9Q153.8 90.9 152.7 91.7L151.75 92.45L151.75 100.75L150.8 100.75L150.8 90.1L151.75 90.1L151.75 91.3Z" fill="#ffffff" fill-rule="evenodd"/><path d="M163.85 98.45Q163.85 99.45 163.15 100.2Q162.4 100.95 161.35 100.95L160.95 100.95Q159.9 100.95 159.15 100.2Q158.4 99.45 158.4 98.45L158.4 92.45Q158.4 91.4 159.15 90.7Q159.9 89.95 160.95 89.95L161.35 89.95Q162.4 89.95 163.15 90.7Q163.85 91.4 163.85 92.45L163.85 98.45Z M162.9 92.45L162.45 91.35Q162 90.9 161.35 90.9L160.95 90.9Q160.3 90.9 159.8 91.35Q159.35 91.8 159.35 92.45L159.35 98.45Q159.35 99.1 159.8 99.55Q160.3 100 160.95 100L161.35 100Q162 100 162.45 99.55L162.9 98.45L162.9 92.45Z" fill="#ffffff" fill-rule="evenodd"/></svg></h2>
+      <div class="body">
+        <div class="field">
+          <label for="nombre">Tu nombre:</label>
+          <input id="nombre" type="text" autocomplete="name" maxlength="80" required>
+          <span class="printval" id="pv-nombre"></span>
+        </div>
+        <div class="field">
+          <label for="fecha">Fecha:</label>
+          <input id="fecha" type="date" required>
+          <span class="printval" id="pv-fecha"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-label="Propósito de la actividad">
+      <h2 class="bh"><svg xmlns="http://www.w3.org/2000/svg" viewBox="26.8 161.9 168.35 26.4" role="img" aria-label="Propósito de la actividad"><path d="M195.15 188.3L26.8 188.3L26.8 161.9L195.15 161.9L195.15 188.3Z" fill="#00758d" fill-rule="evenodd"/><path d="M38.85 167.3L36.75 167.3L36.75 174.15L38.85 174.15Q39.55 174.15 40.1 173.65Q40.6 173.1 40.6 172.35L40.6 169Q40.6 168.3 40.1 167.8Q39.55 167.3 38.85 167.3Z M38.85 166.35Q40 166.35 40.75 167.1Q41.55 167.9 41.55 169L41.55 172.35Q41.55 173.5 40.75 174.25Q40 175.05 38.85 175.05L36.75 175.05L36.75 181.55L35.8 181.55L35.8 166.35L38.85 166.35Z" fill="#ffffff" fill-rule="evenodd"/><path d="M44.4 173.25L44.4 181.55L43.45 181.55L43.45 170.95L44.4 170.95L44.4 172.1L45.35 171.45Q46.45 170.75 47.1 170.75Q47.85 170.75 48.4 171.3Q48.9 171.8 48.9 172.55L48.9 174.5L47.95 174.5L47.95 172.55L47.7 171.95L47.1 171.7Q46.45 171.7 45.35 172.5L44.4 173.25Z" fill="#ffffff" fill-rule="evenodd"/><path d="M55.05 171.5Q55.75 172.2 55.75 173.25L55.75 179.25Q55.75 180.25 55.05 181Q54.3 181.75 53.25 181.75L52.85 181.75Q51.8 181.75 51.05 181Q50.3 180.25 50.3 179.25L50.3 173.25Q50.3 172.2 51.05 171.5Q51.8 170.75 52.85 170.75L53.25 170.75Q54.3 170.75 55.05 171.5Z M51.7 172.15Q51.25 172.6 51.25 173.25L51.25 179.25Q51.25 179.9 51.7 180.35Q52.2 180.8 52.85 180.8L53.25 180.8L54.35 180.35Q54.8 179.9 54.8 179.25L54.8 173.25Q54.8 172.6 54.35 172.15Q53.9 171.7 53.25 171.7L52.85 171.7Q52.2 171.7 51.7 172.15Z" fill="#ffffff" fill-rule="evenodd"/><path d="M63.4 172.55L63.4 179.25Q63.4 180.25 62.65 181Q61.9 181.75 60.85 181.75L60.45 181.75Q59.55 181.75 58.9 181.2L58.9 184.55L57.95 184.55L57.95 170.95L58.9 170.95L58.9 172.1Q59.3 171.75 59.85 171.45Q60.95 170.75 61.55 170.75Q62.3 170.75 62.85 171.3Q63.4 171.8 63.4 172.55Z M62.15 171.95L61.55 171.7Q60.95 171.7 59.85 172.5Q59.3 172.85 58.9 173.25L58.9 179.25Q58.9 179.9 59.35 180.35Q59.8 180.8 60.45 180.8L60.85 180.8Q61.5 180.8 62 180.35Q62.45 179.9 62.45 179.25L62.45 172.55L62.15 171.95Z" fill="#ffffff" fill-rule="evenodd"/><path d="M70.4 167.05L68.55 169.55L67.45 169.55L69.35 167.05L70.4 167.05Z M66.5 173.25L66.5 179.25Q66.5 179.9 66.95 180.35Q67.45 180.8 68.1 180.8L68.5 180.8Q69.15 180.8 69.6 180.35L70.05 179.25L70.05 173.25L69.6 172.15Q69.15 171.7 68.5 171.7L68.1 171.7Q67.45 171.7 66.95 172.15Q66.5 172.6 66.5 173.25Z M68.1 170.75L68.5 170.75Q69.55 170.75 70.3 171.5Q71 172.2 71 173.25L71 179.25Q71 180.25 70.3 181Q69.55 181.75 68.5 181.75L68.1 181.75Q67.05 181.75 66.3 181Q65.55 180.25 65.55 179.25L65.55 173.25Q65.55 172.2 66.3 171.5Q67.05 170.75 68.1 170.75Z" fill="#ffffff" fill-rule="evenodd"/><path d="M73.85 173.25L73.85 173.65Q73.85 174.5 76 175.8L77.2 176.6Q78.35 177.65 78.35 178.6L78.35 179.25Q78.35 180.25 77.65 181Q76.9 181.75 75.85 181.75L75.4 181.75Q74.35 181.75 73.65 181Q72.9 180.25 72.9 179.25L72.9 177.55L73.85 177.55L73.85 179.25Q73.85 179.9 74.3 180.35Q74.75 180.8 75.4 180.8L75.85 180.8L76.95 180.35Q77.4 179.9 77.4 179.25L77.4 178.6Q77.4 178.05 76.3 177.15L75.15 176.4Q72.9 175.15 72.9 173.65L72.9 173.25Q72.9 172.2 73.65 171.5Q74.35 170.75 75.4 170.75L75.85 170.75Q76.9 170.75 77.65 171.5Q78.35 172.2 78.35 173.25L78.35 173.65L77.4 173.65L77.4 173.25Q77.4 172.6 76.95 172.15Q76.5 171.7 75.85 171.7L75.4 171.7Q74.75 171.7 74.3 172.15Q73.85 172.6 73.85 173.25Z" fill="#ffffff" fill-rule="evenodd"/><path d="M80.55 167.05L81.45 167.05L81.45 169.05L80.55 169.05L80.55 167.05Z M80.55 170.95L81.45 170.95L81.45 179.95L81.9 180.5L82.7 180.8L82.7 181.75Q81.9 181.75 81.25 181.25Q80.55 180.65 80.55 179.95L80.55 170.95Z" fill="#ffffff" fill-rule="evenodd"/><path d="M83.2 171.85L83.2 170.95L84.7 170.95L84.7 168.2L85.65 168.2L85.65 170.95L87.7 170.95L87.7 171.85L85.65 171.85L85.65 179.95L86.05 180.5L86.9 180.8L86.9 181.75Q86.1 181.75 85.45 181.25Q84.7 180.65 84.7 179.95L84.7 171.85L83.2 171.85Z" fill="#ffffff" fill-rule="evenodd"/><path d="M89.75 173.25L89.75 179.25Q89.75 179.9 90.2 180.35Q90.7 180.8 91.35 180.8L91.75 180.8Q92.4 180.8 92.85 180.35Q93.3 179.9 93.3 179.25L93.3 173.25Q93.3 172.6 92.85 172.15Q92.4 171.7 91.75 171.7L91.35 171.7Q90.7 171.7 90.2 172.15Q89.75 172.6 89.75 173.25Z M89.55 171.5Q90.3 170.75 91.35 170.75L91.75 170.75Q92.8 170.75 93.55 171.5Q94.25 172.2 94.25 173.25L94.25 179.25Q94.25 180.25 93.55 181Q92.8 181.75 91.75 181.75L91.35 181.75Q90.3 181.75 89.55 181Q88.8 180.25 88.8 179.25L88.8 173.25Q88.8 172.2 89.55 171.5Z" fill="#ffffff" fill-rule="evenodd"/><path d="M105.1 167.05L105.1 181.55L104.15 181.55L104.15 180.4Q102.45 181.75 101.45 181.75Q100.7 181.75 100.2 181.25Q99.65 180.7 99.65 179.95L99.65 173.25Q99.65 172.2 100.4 171.45Q101.1 170.7 102.15 170.7L102.6 170.7Q103.45 170.7 104.15 171.3L104.15 167.05L105.1 167.05Z M103.7 172.1Q103.25 171.65 102.6 171.65L102.15 171.65Q101.5 171.65 101.05 172.15Q100.6 172.6 100.6 173.25L100.6 179.95Q100.6 180.3 100.9 180.55L101.45 180.8Q102.45 180.8 104.15 179.25L104.15 173.15Q104.15 172.55 103.7 172.1Z" fill="#ffffff" fill-rule="evenodd"/><path d="M108.3 173.25L108.3 174.8L111.9 174.8L111.9 173.25Q111.9 172.6 111.45 172.15Q110.95 171.7 110.3 171.7L109.9 171.7Q109.25 171.7 108.75 172.15Q108.3 172.6 108.3 173.25Z M108.1 171.5Q108.85 170.75 109.9 170.75L110.3 170.75Q111.35 170.75 112.1 171.5Q112.8 172.2 112.8 173.25L112.8 175.7L108.3 175.7L108.3 179.25Q108.3 179.9 108.75 180.35Q109.25 180.8 109.9 180.8L110.3 180.8Q110.95 180.8 111.45 180.35Q111.9 179.9 111.9 179.25L111.9 177.85L112.8 177.85L112.8 179.25Q112.8 180.3 112.1 181.05Q111.35 181.75 110.3 181.75L109.9 181.75Q108.85 181.75 108.1 181.05Q107.35 180.3 107.35 179.25L107.35 173.25Q107.35 172.2 108.1 171.5Z" fill="#ffffff" fill-rule="evenodd"/><path d="M118.1 167.05L119.05 167.05L119.05 179.95L119.5 180.5L120.3 180.8L120.3 181.75Q119.5 181.75 118.85 181.25Q118.1 180.65 118.1 179.95L118.1 167.05Z" fill="#ffffff" fill-rule="evenodd"/><path d="M121.35 178.65Q121.35 176.65 123.25 175.85L125.85 175.05L125.85 173.25Q125.85 171.7 124.3 171.7Q123.55 171.7 123.15 172.15Q122.7 172.6 122.7 173.25L122.7 173.65L121.75 173.65L121.75 173.25Q121.75 172.15 122.5 171.45Q123.25 170.75 124.3 170.75Q125.35 170.75 126.1 171.45Q126.8 172.15 126.8 173.25L126.8 181.55L125.85 181.55L125.85 180.4Q124.15 181.75 123.15 181.75Q122.4 181.75 121.9 181.25Q121.35 180.7 121.35 179.95L121.35 178.65Z M125.85 176L123.65 176.75Q122.3 177.2 122.3 178.65L122.3 179.95Q122.3 180.3 122.6 180.55L123.15 180.8Q124.15 180.8 125.85 179.25L125.85 176Z" fill="#ffffff" fill-rule="evenodd"/><path d="M137.25 173.25L137.25 181.55L136.3 181.55L136.3 180.4Q134.65 181.75 133.65 181.75Q132.9 181.75 132.35 181.25Q131.8 180.7 131.8 179.95L131.8 178.65Q131.8 176.65 133.7 175.85L136.3 175.05L136.3 173.25Q136.3 171.7 134.75 171.7Q134.05 171.7 133.6 172.15Q133.2 172.6 133.2 173.25L133.2 173.65L132.25 173.65L132.25 173.25Q132.25 172.15 133 171.45Q133.7 170.75 134.75 170.75Q135.8 170.75 136.55 171.45Q137.25 172.15 137.25 173.25Z M136.3 176L134.1 176.75Q132.75 177.2 132.75 178.65L132.75 179.95Q132.75 180.3 133.05 180.55L133.65 180.8Q134.65 180.8 136.3 179.25L136.3 176Z" fill="#ffffff" fill-rule="evenodd"/><path d="M141.95 171.7Q141.3 171.7 140.85 172.15Q140.4 172.6 140.4 173.25L140.4 179.25Q140.4 179.9 140.85 180.35L141.95 180.8L142.4 180.8Q143.05 180.8 143.5 180.35L143.95 179.25L143.95 177.85L144.9 177.85L144.9 179.25Q144.9 180.25 144.2 181Q143.45 181.75 142.4 181.75L141.95 181.75Q140.9 181.75 140.2 181Q139.45 180.25 139.45 179.25L139.45 173.25Q139.45 172.2 140.2 171.5Q140.9 170.75 141.95 170.75L142.4 170.75Q143.45 170.75 144.2 171.5Q144.9 172.2 144.9 173.25L144.9 174.7L143.95 174.7L143.95 173.25L143.5 172.15Q143.05 171.7 142.4 171.7L141.95 171.7Z" fill="#ffffff" fill-rule="evenodd"/><path d="M145.55 170.95L147.05 170.95L147.05 168.2L148 168.2L148 170.95L150.05 170.95L150.05 171.85L148 171.85L148 179.95L148.45 180.5L149.25 180.8L149.25 181.75Q148.45 181.75 147.8 181.25Q147.05 180.65 147.05 179.95L147.05 171.85L145.55 171.85L145.55 170.95Z" fill="#ffffff" fill-rule="evenodd"/><path d="M152.4 169.05L151.45 169.05L151.45 167.05L152.4 167.05L152.4 169.05Z M152.4 170.95L152.4 179.95L152.8 180.5L153.65 180.8L153.65 181.75Q152.85 181.75 152.2 181.25Q151.45 180.65 151.45 179.95L151.45 170.95L152.4 170.95Z" fill="#ffffff" fill-rule="evenodd"/><path d="M160.35 170.95L158.55 181.1L158.25 181.55L157.7 181.75L157.1 181.75Q156.35 181.75 156.25 181.1L154.4 170.95L155.35 170.95L157.15 180.55L157.3 180.8L157.45 180.8L157.65 180.55L159.4 170.95L160.35 170.95Z" fill="#ffffff" fill-rule="evenodd"/><path d="M163 169.05L162.05 169.05L162.05 167.05L163 167.05L163 169.05Z M163 170.95L163 179.95L163.45 180.5L164.25 180.8L164.25 181.75Q163.45 181.75 162.8 181.25Q162.05 180.65 162.05 179.95L162.05 170.95L163 170.95Z" fill="#ffffff" fill-rule="evenodd"/><path d="M171.25 167.05L171.25 181.55L170.3 181.55L170.3 180.4Q168.6 181.75 167.6 181.75Q166.85 181.75 166.35 181.25Q165.8 180.7 165.8 179.95L165.8 173.25Q165.8 172.2 166.55 171.45Q167.25 170.7 168.3 170.7L168.7 170.7Q169.6 170.7 170.3 171.3L170.3 167.05L171.25 167.05Z M169.8 172.1Q169.35 171.65 168.7 171.65L168.3 171.65Q167.65 171.65 167.15 172.15Q166.7 172.6 166.7 173.25L166.7 179.95Q166.7 180.3 167 180.55L167.6 180.8Q168.6 180.8 170.3 179.25L170.3 173.15Q170.3 172.55 169.8 172.1Z" fill="#ffffff" fill-rule="evenodd"/><path d="M178.55 173.25L178.55 181.55L177.6 181.55L177.6 180.4Q175.95 181.75 174.95 181.75Q174.2 181.75 173.65 181.25Q173.1 180.7 173.1 179.95L173.1 178.65Q173.1 176.65 175 175.85L177.6 175.05L177.6 173.25Q177.6 171.7 176.05 171.7Q175.35 171.7 174.9 172.15Q174.5 172.6 174.5 173.25L174.5 173.65L173.55 173.65L173.55 173.25Q173.55 172.15 174.3 171.45Q175 170.75 176.05 170.75Q177.1 170.75 177.85 171.45Q178.55 172.15 178.55 173.25Z M177.6 176L175.4 176.75Q174.05 177.2 174.05 178.65L174.05 179.95Q174.05 180.3 174.35 180.55L174.95 180.8Q175.95 180.8 177.6 179.25L177.6 176Z" fill="#ffffff" fill-rule="evenodd"/><path d="M186.3 167.05L186.3 181.55L185.35 181.55L185.35 180.4Q183.65 181.75 182.65 181.75Q181.9 181.75 181.4 181.25Q180.85 180.7 180.85 179.95L180.85 173.25Q180.85 172.2 181.6 171.45Q182.3 170.7 183.35 170.7L183.75 170.7Q184.65 170.7 185.35 171.3L185.35 167.05L186.3 167.05Z M184.85 172.1Q184.4 171.65 183.75 171.65L183.35 171.65Q182.7 171.65 182.25 172.15Q181.8 172.6 181.8 173.25L181.8 179.95Q181.8 180.8 182.65 180.8Q183.65 180.8 185.35 179.25L185.35 173.15Q185.35 172.55 184.85 172.1Z" fill="#ffffff" fill-rule="evenodd"/></svg></h2>
+      <div class="body"><p>Que identifiques las herramientas que contienen las diferentes cintas de opciones de Excel.</p></div>
+    </section>
+
+    <section class="card" aria-label="Paso a paso">
+      <h2 class="bh"><svg xmlns="http://www.w3.org/2000/svg" viewBox="26.8 221.3 168.35 26.4" role="img" aria-label="Paso a paso"><path d="M26.8 221.3L195.15 221.3L195.15 247.7L26.8 247.7L26.8 221.3Z" fill="#00758d" fill-rule="evenodd"/><path d="M81.75 231.75Q81.75 232.9 80.95 233.7Q80.15 234.5 79.05 234.5L76.95 234.5L76.95 241L76 241L76 225.8L79.05 225.8Q80.2 225.8 80.95 226.55Q81.75 227.3 81.75 228.4L81.75 231.75Z M76.95 226.75L76.95 233.55L79.05 233.55Q79.8 233.55 80.3 233.05Q80.8 232.5 80.8 231.75L80.8 228.4Q80.8 227.7 80.3 227.2Q79.8 226.75 79.05 226.75L76.95 226.75Z" fill="#ffffff" fill-rule="evenodd"/><path d="M87.2 232.7Q87.2 231.1 85.65 231.1Q84.9 231.1 84.5 231.55Q84.05 232 84.05 232.7L84.05 233.05L83.15 233.05L83.15 232.7Q83.15 231.55 83.9 230.85Q84.6 230.15 85.65 230.15Q86.7 230.15 87.45 230.85Q88.15 231.55 88.15 232.7L88.15 241L87.2 241L87.2 239.8Q85.55 241.2 84.55 241.2Q83.8 241.2 83.25 240.65Q82.7 240.1 82.7 239.35L82.7 238.05Q82.7 236 84.6 235.3L87.2 234.45L87.2 232.7Z M83.95 239.95Q84.2 240.25 84.55 240.25Q85.55 240.25 87.2 238.65L87.2 235.45L85 236.15Q83.65 236.7 83.65 238.05L83.65 239.35Q83.65 239.7 83.95 239.95Z" fill="#ffffff" fill-rule="evenodd"/><path d="M91.1 233.05Q91.1 233.95 93.25 235.2L94.45 236.05Q95.6 237.05 95.6 238L95.6 238.65Q95.6 239.7 94.9 240.45Q94.15 241.2 93.1 241.2L92.65 241.2Q91.6 241.2 90.9 240.45Q90.15 239.7 90.15 238.65L90.15 236.95L91.1 236.95L91.1 238.65Q91.1 239.3 91.55 239.75Q92 240.25 92.65 240.25L93.1 240.25Q93.75 240.25 94.2 239.75Q94.65 239.3 94.65 238.65L94.65 238Q94.65 237.45 93.55 236.6L92.4 235.8Q90.15 234.6 90.15 233.05L90.15 232.7Q90.15 231.65 90.9 230.9Q91.6 230.15 92.65 230.15L93.1 230.15Q94.15 230.15 94.9 230.9Q95.6 231.65 95.6 232.7L95.6 233.05L94.65 233.05L94.65 232.7Q94.65 232.05 94.2 231.55Q93.75 231.1 93.1 231.1L92.65 231.1Q92 231.1 91.55 231.55Q91.1 232.05 91.1 232.7L91.1 233.05Z" fill="#ffffff" fill-rule="evenodd"/><path d="M100.4 230.15Q101.45 230.15 102.2 230.9Q102.95 231.65 102.95 232.7L102.95 238.65Q102.95 239.7 102.2 240.45Q101.45 241.2 100.4 241.2L100 241.2Q98.95 241.2 98.25 240.45Q97.5 239.7 97.5 238.65L97.5 232.7Q97.5 231.65 98.25 230.9Q98.95 230.15 100 230.15L100.4 230.15Z M100 231.1Q99.35 231.1 98.9 231.55Q98.45 232.05 98.45 232.7L98.45 238.65Q98.45 239.3 98.9 239.75Q99.35 240.25 100 240.25L100.4 240.25Q101.05 240.25 101.55 239.75Q102 239.3 102 238.65L102 232.7Q102 232.05 101.55 231.55Q101.1 231.1 100.4 231.1L100 231.1Z" fill="#ffffff" fill-rule="evenodd"/><path d="M110.8 230.15Q111.85 230.15 112.6 230.85Q113.3 231.55 113.3 232.7L113.3 241L112.35 241L112.35 239.8Q110.7 241.2 109.65 241.2Q108.9 241.2 108.4 240.65Q107.85 240.1 107.85 239.35L107.85 238.05Q107.85 236 109.75 235.3L112.35 234.45L112.35 232.7Q112.35 231.1 110.8 231.1Q110.05 231.1 109.65 231.55Q109.2 232 109.2 232.7L109.2 233.05L108.25 233.05L108.25 232.7Q108.25 231.55 109 230.85Q109.7 230.15 110.8 230.15Z M109.1 239.95L109.65 240.25Q110.7 240.25 112.35 238.65L112.35 235.45L110.15 236.15Q108.8 236.7 108.8 238.05L108.8 239.35Q108.8 239.7 109.1 239.95Z" fill="#ffffff" fill-rule="evenodd"/><path d="M123 231.35L122.4 231.1Q121.8 231.1 120.7 231.9L119.75 232.65L119.75 238.65Q119.75 239.3 120.2 239.75Q120.65 240.25 121.3 240.25L121.7 240.25Q122.35 240.25 122.85 239.75L123.3 238.65L123.3 232L123 231.35Z M123.7 230.7Q124.25 231.2 124.25 232L124.25 238.65Q124.25 239.7 123.5 240.45Q122.75 241.2 121.7 241.2L121.3 241.2Q120.5 241.2 119.75 240.65L119.75 243.95L118.8 243.95L118.8 230.35L119.75 230.35L119.75 231.55Q120.15 231.2 120.7 230.85Q121.8 230.15 122.4 230.15Q123.2 230.15 123.7 230.7Z" fill="#ffffff" fill-rule="evenodd"/><path d="M130.55 232.7Q130.55 231.1 128.95 231.1Q128.25 231.1 127.8 231.55Q127.4 232 127.4 232.7L127.4 233.05L126.45 233.05L126.45 232.7Q126.45 231.55 127.2 230.85Q127.9 230.15 128.95 230.15Q130.05 230.15 130.75 230.85Q131.5 231.55 131.5 232.7L131.5 241L130.55 241L130.55 239.8Q128.85 241.2 127.85 241.2Q127.1 241.2 126.6 240.65Q126.05 240.1 126.05 239.35L126.05 238.05Q126.05 236 127.9 235.3L130.55 234.45L130.55 232.7Z M127.25 239.95Q127.5 240.25 127.85 240.25Q128.85 240.25 130.55 238.65L130.55 235.45L128.3 236.15Q127 236.65 127 238.05L127 239.35L127.25 239.95Z" fill="#ffffff" fill-rule="evenodd"/><path d="M137.55 231.55Q137.1 231.1 136.4 231.1L136 231.1Q135.35 231.1 134.85 231.55Q134.4 232.05 134.4 232.7L134.4 233.05Q134.4 233.95 136.6 235.2L137.75 236.05Q138.9 237.05 138.9 238L138.9 238.65Q138.9 239.7 138.2 240.45Q137.45 241.2 136.4 241.2L136 241.2Q134.95 241.2 134.2 240.45Q133.45 239.7 133.45 238.65L133.45 236.95L134.4 236.95L134.4 238.65Q134.4 239.3 134.85 239.75Q135.35 240.25 136 240.25L136.4 240.25Q137.05 240.25 137.55 239.75L138 238.65L138 238Q138 237.45 136.9 236.6L135.75 235.8Q133.45 234.6 133.45 233.05L133.45 232.7Q133.45 231.65 134.2 230.9Q134.95 230.15 136 230.15L136.4 230.15Q137.45 230.15 138.2 230.9Q138.9 231.65 138.9 232.7L138.9 233.05L138 233.05L138 232.7Q138 232.05 137.55 231.55Z" fill="#ffffff" fill-rule="evenodd"/><path d="M141.55 230.9Q142.3 230.15 143.35 230.15L143.75 230.15Q144.8 230.15 145.55 230.9Q146.25 231.65 146.25 232.7L146.25 238.65Q146.25 239.7 145.55 240.45Q144.8 241.2 143.75 241.2L143.35 241.2Q142.3 241.2 141.55 240.45Q140.8 239.7 140.8 238.65L140.8 232.7Q140.8 231.65 141.55 230.9Z M141.75 238.65Q141.75 239.3 142.2 239.75Q142.7 240.25 143.35 240.25L143.75 240.25Q144.4 240.25 144.85 239.75L145.3 238.65L145.3 232.7Q145.3 232.05 144.85 231.55Q144.4 231.1 143.75 231.1L143.35 231.1Q142.7 231.1 142.2 231.55Q141.75 232.05 141.75 232.7L141.75 238.65Z" fill="#ffffff" fill-rule="evenodd"/></svg></h2>
+      <div class="body">
+        <ol class="steps">
+          <li>Las cintas de opciones contienen grupos, que a su vez alojan una gran cantidad de botones, que a su vez tienen comandos. Contesta, pulsando en el botón de opción correspondiente, a qué cinta de opciones corresponden los comandos siguientes. Al finalizar, presiona el botón <b>Calificar</b>.</li>
+          <li>Relaciona los tipos de cintas de opciones de la izquierda, con las herramientas o comandos de la derecha escribiendo la letra correspondiente. Al finalizar presiona el botón <b>Calificar</b>.</li>
+          <li>Imprime esta actividad y entrégala a tu profesor.</li>
+        </ol>
+      </div>
+    </section>
+  </aside>
+
+  <main class="main">
+    <section class="card results" id="results" hidden tabindex="-1" aria-live="polite"></section>
+
+    <section class="part" aria-labelledby="h-p1">
+      <h2 id="h-p1">Parte 1</h2>
+      <div class="qgrid" id="part1"></div>
+    </section>
+
+    <section class="part" aria-labelledby="h-p2">
+      <h2 id="h-p2">Parte 2</h2>
+      <div class="p2">
+        <div class="legend" id="legend2">
+          <h3>Cintas de opciones</h3>
+          <ul>
+            <li><b>a</b>Cinta de opciones Inicio</li>
+            <li><b>b</b>Cinta de opciones Fórmulas</li>
+            <li><b>c</b>Cinta de opciones Datos</li>
+          </ul>
+        </div>
+        <div class="items" id="part2"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="alert" hidden></div>
+
+<div class="bar noprint">
+  <button type="button" class="btn retry" id="btn-retry" hidden>Volver a intentar</button>
+  <button type="button" class="btn alt" id="btn-print">Imprimir / Guardar como PDF</button>
+  <button type="button" class="btn" id="btn-grade">Calificar</button>
+</div>
+
+<script>
+"use strict";
+/* ==========================================================
+   DATOS DE LA ACTIVIDAD
+   Recuperados del archivo SWF (hd2_B4_Act2.swf):
+   - Parte 1: botones de opción P1…P10. La clave (P1op2, P2op1, P3op3, P4op1,
+     P5op2, P6op3, P7op4, P8op1, P9op3, P10op1) se lee del script del botón
+     "Calificar" de la primera pantalla; aquí se guarda el TEXTO de la opción
+     correcta para que no dependa del orden en que se muestren.
+   - Parte 2: campos de texto uno…diez; el script del segundo botón
+     "Calificar" acepta a/A, b/B o c/C según el elemento.
+   ========================================================== */
+var PARTE1 = [
+  {id:"p1",  tema:"Nuevo",                opciones:["Inicio","Archivo","Fórmulas","Vista"],            correcta:"Archivo"},
+  {id:"p2",  tema:"Diseño de página",     opciones:["Vista","Datos","Fórmulas","Insertar"],             correcta:"Vista"},
+  {id:"p3",  tema:"Filtro",               opciones:["Archivo","Vista","Datos","Diseño de página"],      correcta:"Datos"},
+  {id:"p4",  tema:"Márgenes",             opciones:["Diseño de página","Inicio","Datos","Archivo"],     correcta:"Diseño de página"},
+  {id:"p5",  tema:"Gráfico dinámico",     opciones:["Fórmulas","Insertar","Vista","Datos"],             correcta:"Insertar"},
+  {id:"p6",  tema:"Formato condicional",  opciones:["Insertar","Archivo","Inicio","Vista"],             correcta:"Inicio"},
+  {id:"p7",  tema:"Compartir libro",      opciones:["Insertar","Datos","Fórmulas","Revisar"],           correcta:"Revisar"},
+  {id:"p8",  tema:"Imprimir",             opciones:["Archivo","Inicio","Fórmulas","Vista"],             correcta:"Archivo"},
+  {id:"p9",  tema:"Hipervínculo",         opciones:["Inicio","Diseño de página","Insertar","Archivo"],  correcta:"Insertar"},
+  {id:"p10", tema:"Negrita",              opciones:["Inicio","Diseño de página","Archivo","Insertar"],  correcta:"Inicio"}
+];
+var CINTAS = {a:"Inicio", b:"Fórmulas", c:"Datos"};
+var PARTE2 = [
+  {id:"i1",  texto:"Ordenar y filtrar",  correcta:"a"},
+  {id:"i2",  texto:"Insertar función",   correcta:"b"},
+  {id:"i3",  texto:"Desde Access",       correcta:"c"},
+  {id:"i4",  texto:"Actualizar todo",    correcta:"c"},
+  {id:"i5",  texto:"Asignar nombre",     correcta:"c"},
+  {id:"i6",  texto:"Copiar formato",     correcta:"a"},
+  {id:"i7",  texto:"Texto en columnas",  correcta:"c"},
+  {id:"i8",  texto:"Financieras",        correcta:"b"},
+  {id:"i9",  texto:"Consolidar",         correcta:"c"},
+  {id:"i10", texto:"Ajuste de texto",    correcta:"a"}
+];
+
+/* ---------- Estado ---------- */
+var estado = { calificado:false, p1:[], p2:[] };
+
+/* ---------- Utilidades ---------- */
+function $(id){ return document.getElementById(id); }
+
+/* Mezcla Fisher–Yates (devuelve una copia). */
+function mezclar(arr){
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--){
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+/* Fecha local en formato AAAA-MM-DD para el campo de fecha. */
+function hoyISO(){
+  var d = new Date();
+  var m = ("0" + (d.getMonth() + 1)).slice(-2), dd = ("0" + d.getDate()).slice(-2);
+  return d.getFullYear() + "-" + m + "-" + dd;
+}
+function fechaLegible(iso){
+  if (!iso) return "";
+  var p = iso.split("-");
+  var d = new Date(+p[0], +p[1] - 1, +p[2]);
+  return d.toLocaleDateString("es-MX", {day:"numeric", month:"long", year:"numeric"});
+}
+
+/* ---------- Aleatorización ----------
+   Parte 1: se mezclan preguntas y opciones. Cada pregunta conserva su
+   respuesta correcta como texto, por lo que la asociación nunca se pierde.
+   Se reintenta hasta que las respuestas correctas no se concentren en una
+   misma posición.
+   Parte 2: se mezcla el orden de los elementos; las letras a, b y c de la
+   leyenda se mantienen fijas porque definen la relación del ejercicio. */
+function prepararParte1(){
+  var mejor = null;
+  for (var intento = 0; intento < 200; intento++){
+    var lista = mezclar(PARTE1).map(function(q){
+      return {id:q.id, tema:q.tema, correcta:q.correcta, opciones:mezclar(q.opciones)};
+    });
+    var cuenta = [0,0,0,0];
+    lista.forEach(function(q){ cuenta[q.opciones.indexOf(q.correcta)]++; });
+    var max = Math.max.apply(null, cuenta), min = Math.min.apply(null, cuenta);
+    mejor = lista;
+    if (max <= 4 && min >= 1) break;
+  }
+  return mejor;
+}
+function prepararParte2(){
+  var lista, orig = PARTE2.map(function(x){ return x.id; }).join();
+  do { lista = mezclar(PARTE2); } while (lista.map(function(x){ return x.id; }).join() === orig);
+  return lista;
+}
+
+/* ---------- Construcción de la interfaz ---------- */
+function crear(tag, cls, texto){
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (texto !== undefined) e.textContent = texto;
+  return e;
+}
+
+function dibujarParte1(){
+  var cont = $("part1"); cont.textContent = "";
+  estado.p1.forEach(function(q, n){
+    var fs = crear("fieldset", "q"); fs.id = "fs-" + q.id; fs.dataset.id = q.id;
+    var lg = crear("legend", "", (n + 1) + ".  " + q.tema); fs.appendChild(lg);
+    var box = crear("div", "opts");
+    q.opciones.forEach(function(op, k){
+      var lab = crear("label", "opt");
+      var inp = document.createElement("input");
+      inp.type = "radio"; inp.name = "r-" + q.id; inp.value = op; inp.id = "r-" + q.id + "-" + k;
+      inp.addEventListener("change", function(){ marcarSeleccion(fs); });
+      var mk = crear("span", "mark"); mk.setAttribute("aria-hidden", "true");
+      lab.appendChild(inp); lab.appendChild(mk); lab.appendChild(crear("span", "", op));
+      box.appendChild(lab);
+    });
+    fs.appendChild(box);
+    var fb = crear("p", "fb"); fb.hidden = true; fs.appendChild(fb);
+    cont.appendChild(fs);
+  });
+}
+/* Actualiza el marcador visible en la versión impresa. */
+function marcarSeleccion(fs){
+  fs.classList.remove("missing");
+  var fb = fs.querySelector(".fb"); if (!estado.calificado){ fb.hidden = true; fb.textContent = ""; }
+  fs.querySelectorAll("label.opt").forEach(function(l){
+    l.querySelector(".mark").classList.toggle("on", l.querySelector("input").checked);
+  });
+}
+
+function dibujarParte2(){
+  var cont = $("part2"); cont.textContent = "";
+  estado.p2.forEach(function(it, n){
+    var fila = crear("div", "it"); fila.id = "row-" + it.id; fila.dataset.id = it.id;
+    var inp = document.createElement("input");
+    inp.type = "text"; inp.className = "letter"; inp.id = "l-" + it.id; inp.maxLength = 1;
+    inp.autocomplete = "off"; inp.setAttribute("aria-describedby", "legend2");
+    inp.addEventListener("input", function(){
+      /* Solo se aceptan las letras a, b o c (sin distinguir mayúsculas). */
+      var v = inp.value.toLowerCase();
+      inp.value = (v === "a" || v === "b" || v === "c") ? v : "";
+      pv.textContent = inp.value;
+      fila.classList.remove("missing");
+      var fb = fila.querySelector(".fb"); if (!estado.calificado){ fb.hidden = true; fb.textContent = ""; }
+    });
+    var pv = crear("span", "printval"); pv.id = "pv-" + it.id;
+    var lab = crear("label", "", (n + 1) + ".  " + it.texto); lab.setAttribute("for", inp.id);
+    var izq = crear("div"); izq.appendChild(inp); izq.appendChild(pv);
+    fila.appendChild(izq); fila.appendChild(lab);
+    var fb = crear("p", "fb"); fb.hidden = true; fila.appendChild(fb);
+    cont.appendChild(fila);
+  });
+}
+
+/* ---------- Mensajes ---------- */
+function mostrarMensaje(titulo, lista){
+  var t = $("toast"); t.textContent = "";
+  t.appendChild(crear("p", "", titulo));
+  if (lista && lista.length){
+    var ul = crear("ul");
+    lista.forEach(function(x){ ul.appendChild(crear("li", "", x)); });
+    t.appendChild(ul);
+  }
+  var b = crear("button", "", "Entendido"); b.type = "button";
+  b.addEventListener("click", function(){ t.hidden = true; });
+  t.appendChild(b); t.hidden = false;
+}
+function ocultarMensaje(){ $("toast").hidden = true; }
+
+/* ---------- Validación y calificación ---------- */
+function respuestaP1(q){
+  var sel = document.querySelector('input[name="r-' + q.id + '"]:checked');
+  return sel ? sel.value : null;
+}
+function respuestaP2(it){ return $("l-" + it.id).value; }
+
+function calificar(){
+  if (estado.calificado) return;                 /* evita calificar dos veces */
+  var problemas = [], primero = null;
+
+  if (!$("nombre").value.trim()){ problemas.push("Escribe tu nombre."); primero = $("nombre"); }
+  if (!$("fecha").value){ problemas.push("Indica la fecha."); if (!primero) primero = $("fecha"); }
+
+  var sinP1 = [], sinP2 = [];
+  estado.p1.forEach(function(q, n){
+    var fs = $("fs-" + q.id);
+    if (respuestaP1(q) === null){
+      sinP1.push(n + 1); fs.classList.add("missing");
+      var fb = fs.querySelector(".fb"); fb.hidden = false; fb.textContent = "Sin responder";
+      if (!primero) primero = fs.querySelector("input");
+    }
+  });
+  estado.p2.forEach(function(it, n){
+    var fila = $("row-" + it.id);
+    if (!respuestaP2(it)){
+      sinP2.push(n + 1); fila.classList.add("missing");
+      var fb = fila.querySelector(".fb"); fb.hidden = false; fb.textContent = "Sin responder";
+      if (!primero) primero = $("l-" + it.id);
+    }
+  });
+  if (sinP1.length) problemas.push("Parte 1: falta contestar la(s) pregunta(s) " + sinP1.join(", ") + ".");
+  if (sinP2.length) problemas.push("Parte 2: falta escribir la letra en el/los elemento(s) " + sinP2.join(", ") + ".");
+
+  if (problemas.length){
+    mostrarMensaje("Aún no se puede calificar. Completa lo siguiente:", problemas);
+    if (primero){ primero.scrollIntoView({block:"center"}); primero.focus(); }
+    return;
+  }
+
+  /* Comparación con la clave de respuestas */
+  var aciertos1 = 0, aciertos2 = 0;
+  estado.p1.forEach(function(q){
+    var fs = $("fs-" + q.id), ok = respuestaP1(q) === q.correcta, fb = fs.querySelector(".fb");
+    if (ok) aciertos1++;
+    fs.classList.remove("missing"); fs.classList.add(ok ? "ok" : "bad");
+    fb.hidden = false;
+    fb.textContent = ok ? "\u2714 Correcta" : "\u2718 Incorrecta. Respuesta correcta: " + q.correcta + ".";
+    fs.querySelectorAll("input").forEach(function(i){ i.disabled = true; });
+  });
+  estado.p2.forEach(function(it){
+    var fila = $("row-" + it.id), v = respuestaP2(it), ok = v === it.correcta, fb = fila.querySelector(".fb");
+    if (ok) aciertos2++;
+    fila.classList.remove("missing"); fila.classList.add(ok ? "ok" : "bad");
+    fb.hidden = false;
+    fb.textContent = ok ? "\u2714 Correcta"
+      : "\u2718 Incorrecta. Respuesta correcta: " + it.correcta + " (Cinta de opciones " + CINTAS[it.correcta] + ").";
+    $("l-" + it.id).readOnly = true;
+  });
+
+  var total = PARTE1.length + PARTE2.length;
+  var aciertos = aciertos1 + aciertos2;
+  var nota = Math.round((aciertos / total) * 10 * 100) / 100;   /* máx. 2 decimales */
+  estado.calificado = true;
+  $("nombre").readOnly = true; $("fecha").readOnly = true;
+  $("btn-grade").setAttribute("aria-disabled", "true");
+  $("btn-retry").hidden = false;
+  ocultarMensaje();
+  mostrarResultados(nota, aciertos, total - aciertos, total, aciertos1, aciertos2);
+}
+
+function mostrarResultados(nota, aciertos, errores, total, a1, a2){
+  var r = $("results"); r.textContent = "";
+  r.appendChild(crear("h2", "", "Resultados"));
+  var s = crear("div", "score", nota.toLocaleString("es-MX", {maximumFractionDigits:2}));
+  s.appendChild(crear("small", "", " / 10")); r.appendChild(s);
+  var ul = crear("ul", "stats");
+  [["Aciertos", aciertos], ["Errores", errores], ["Preguntas evaluadas", total],
+   ["Parte 1", a1 + " de " + PARTE1.length], ["Parte 2", a2 + " de " + PARTE2.length]].forEach(function(p){
+    var li = crear("li"); li.appendChild(document.createTextNode(p[0] + ": ")); li.appendChild(crear("span", "", String(p[1]))); ul.appendChild(li);
+  });
+  r.appendChild(ul);
+  r.hidden = false; r.scrollIntoView({block:"start"}); r.focus();
+}
+
+/* ---------- Impresión ---------- */
+function sincronizarImpresion(){
+  $("pv-nombre").textContent = $("nombre").value;
+  $("pv-fecha").textContent = fechaLegible($("fecha").value);
+  estado.p2.forEach(function(it){ $("pv-" + it.id).textContent = $("l-" + it.id).value; });
+  document.querySelectorAll("fieldset.q").forEach(marcarSeleccionSinBorrar);
+}
+function marcarSeleccionSinBorrar(fs){
+  fs.querySelectorAll("label.opt").forEach(function(l){
+    l.querySelector(".mark").classList.toggle("on", l.querySelector("input").checked);
+  });
+}
+function imprimir(){
+  if (!estado.calificado){
+    mostrarMensaje("Antes de imprimir, completa la actividad y presiona Calificar para que el documento incluya tu calificación.");
+    return;
+  }
+  sincronizarImpresion();
+  window.print();
+}
+window.addEventListener("beforeprint", sincronizarImpresion);
+
+/* ---------- Nuevo intento ---------- */
+function reiniciar(){
+  estado.calificado = false;
+  estado.p1 = prepararParte1(); estado.p2 = prepararParte2();
+  dibujarParte1(); dibujarParte2();
+  $("results").hidden = true; $("results").textContent = "";
+  $("nombre").readOnly = false; $("fecha").readOnly = false;
+  $("btn-grade").removeAttribute("aria-disabled");
+  $("btn-retry").hidden = true; ocultarMensaje();
+  window.scrollTo({top:0});
+}
+
+/* ---------- Arranque ---------- */
+document.addEventListener("DOMContentLoaded", function(){
+  $("fecha").value = hoyISO();
+  $("nombre").addEventListener("input", function(){ $("pv-nombre").textContent = this.value; });
+  $("fecha").addEventListener("input", function(){ $("pv-fecha").textContent = fechaLegible(this.value); });
+  $("btn-grade").addEventListener("click", calificar);
+  $("btn-print").addEventListener("click", imprimir);
+  $("btn-retry").addEventListener("click", reiniciar);
+  estado.p1 = prepararParte1(); estado.p2 = prepararParte2();
+  dibujarParte1(); dibujarParte2(); sincronizarImpresion();
+});
+</script>
+</body>
+</html>
